@@ -1,44 +1,33 @@
-# coding: utf-8
-# frozen_string_literal: true
+# -*- encoding: utf-8 -*-
+# stub: smarter_csv 2.0.0.pre1 ruby lib
 
-require File.expand_path('lib/smarter_csv/version', __dir__)
+Gem::Specification.new do |s|
+  s.name = "smarter_csv".freeze
+  s.version = "2.0.0.pre1"
 
-Gem::Specification.new do |spec|
-  spec.name          = "smarter_csv"
-  spec.version       = SmarterCSV::VERSION
-  spec.authors       = ["Tilo Sloboda"]
-  spec.email         = ["tilo.sloboda@gmail.com"]
+  s.required_rubygems_version = Gem::Requirement.new("> 1.3.1".freeze) if s.respond_to? :required_rubygems_version=
+  s.require_paths = ["lib".freeze]
+  s.authors = ["Tilo Sloboda\n".freeze]
+  s.date = "2022-02-08"
+  s.description = "Ruby Gem for smarter importing of CSV Files as Array(s) of Hashes, with optional features for processing large files in parallel, embedded comments, unusual field- and record-separators, flexible mapping of CSV-headers to Hash-keys".freeze
+  s.email = ["tilo.sloboda@gmail.com\n".freeze]
+  s.files = [".gitignore".freeze, ".rspec".freeze, ".ruby-version".freeze, ".travis.yml".freeze, "Gemfile".freeze, "README.md".freeze, "Rakefile".freeze, "lib/core_ext/hash.rb".freeze, "lib/smarter_csv.rb".freeze, "lib/smarter_csv/data_transformations.rb".freeze, "lib/smarter_csv/data_validations.rb".freeze, "lib/smarter_csv/hash_transformations.rb".freeze, "lib/smarter_csv/hash_validations.rb".freeze, "lib/smarter_csv/header_transformations.rb".freeze, "lib/smarter_csv/header_validations.rb".freeze, "lib/smarter_csv/options_processing.rb".freeze, "lib/smarter_csv/smarter_csv.rb".freeze, "lib/smarter_csv/version.rb".freeze, "smarter_csv.gemspec".freeze, "spec/fixtures/basic.csv".freeze, "spec/fixtures/binary.csv".freeze, "spec/fixtures/carriage_returns_n.csv".freeze, "spec/fixtures/carriage_returns_quoted.csv".freeze, "spec/fixtures/carriage_returns_r.csv".freeze, "spec/fixtures/carriage_returns_rn.csv".freeze, "spec/fixtures/chunk_cornercase.csv".freeze, "spec/fixtures/duplicate_headers.csv".freeze, "spec/fixtures/empty.csv".freeze, "spec/fixtures/line_endings_n.csv".freeze, "spec/fixtures/line_endings_r.csv".freeze, "spec/fixtures/line_endings_rn.csv".freeze, "spec/fixtures/lots_of_columns.csv".freeze, "spec/fixtures/malformed.csv".freeze, "spec/fixtures/malformed_header.csv".freeze, "spec/fixtures/money.csv".freeze, "spec/fixtures/no_header.csv".freeze, "spec/fixtures/numeric.csv".freeze, "spec/fixtures/numeric_leading_zeroes.csv".freeze, "spec/fixtures/pets.csv".freeze, "spec/fixtures/problematic.csv".freeze, "spec/fixtures/quote_char.csv".freeze, "spec/fixtures/quoted.csv".freeze, "spec/fixtures/quoted2.csv".freeze, "spec/fixtures/separator.csv".freeze, "spec/fixtures/skip_lines.csv".freeze, "spec/fixtures/trading.csv".freeze, "spec/fixtures/user_import.csv".freeze, "spec/fixtures/user_import_bad.csv".freeze, "spec/fixtures/valid_unicode.csv".freeze, "spec/fixtures/with_dashes.csv".freeze, "spec/fixtures/with_dates.csv".freeze, "spec/smarter_csv/binary_file_spec.rb".freeze, "spec/smarter_csv/carriage_return_spec.rb".freeze, "spec/smarter_csv/chunked_reading_spec.rb".freeze, "spec/smarter_csv/close_file_spec.rb".freeze, "spec/smarter_csv/column_separator_spec.rb".freeze, "spec/smarter_csv/convert_values_to_numeric_spec.rb".freeze, "spec/smarter_csv/extenstions_spec.rb".freeze, "spec/smarter_csv/hash_validations_spec.rb".freeze, "spec/smarter_csv/header_transformation_spec.rb".freeze, "spec/smarter_csv/invalid_headers_spec.rb".freeze, "spec/smarter_csv/keep_headers_spec.rb".freeze, "spec/smarter_csv/key_mapping_spec.rb".freeze, "spec/smarter_csv/line_ending_spec.rb".freeze, "spec/smarter_csv/load_basic_spec.rb".freeze, "spec/smarter_csv/malformed_spec.rb".freeze, "spec/smarter_csv/no_header_spec.rb".freeze, "spec/smarter_csv/not_downcase_header_spec.rb".freeze, "spec/smarter_csv/options_processing_spec.rb".freeze, "spec/smarter_csv/problematic.rb".freeze, "spec/smarter_csv/quoted_spec.rb".freeze, "spec/smarter_csv/remove_empty_values_spec.rb".freeze, "spec/smarter_csv/remove_keys_from_hashes_spec.rb".freeze, "spec/smarter_csv/remove_zero_values_spec.rb".freeze, "spec/smarter_csv/skip_lines_spec.rb".freeze, "spec/smarter_csv/strings_as_keys_spec.rb".freeze, "spec/smarter_csv/strip_chars_from_headers_spec.rb".freeze, "spec/smarter_csv/trading_spec.rb".freeze, "spec/smarter_csv/valid_unicode_spec.rb".freeze, "spec/spec.opts".freeze, "spec/spec/spec_helper.rb".freeze, "spec/spec_helper.rb".freeze]
+  s.homepage = "https://github.com/tilo/smarter_csv".freeze
+  s.licenses = ["MIT".freeze, "GPL-2".freeze]
+  s.requirements = ["csv".freeze]
+  s.rubygems_version = "3.2.22".freeze
+  s.summary = "Ruby Gem for smarter importing of CSV Files (and CSV-like files), with lots of optional features, e.g. chunked processing for huge CSV files".freeze
+  s.test_files = ["spec/fixtures/basic.csv".freeze, "spec/fixtures/binary.csv".freeze, "spec/fixtures/carriage_returns_n.csv".freeze, "spec/fixtures/carriage_returns_quoted.csv".freeze, "spec/fixtures/carriage_returns_r.csv".freeze, "spec/fixtures/carriage_returns_rn.csv".freeze, "spec/fixtures/chunk_cornercase.csv".freeze, "spec/fixtures/duplicate_headers.csv".freeze, "spec/fixtures/empty.csv".freeze, "spec/fixtures/line_endings_n.csv".freeze, "spec/fixtures/line_endings_r.csv".freeze, "spec/fixtures/line_endings_rn.csv".freeze, "spec/fixtures/lots_of_columns.csv".freeze, "spec/fixtures/malformed.csv".freeze, "spec/fixtures/malformed_header.csv".freeze, "spec/fixtures/money.csv".freeze, "spec/fixtures/no_header.csv".freeze, "spec/fixtures/numeric.csv".freeze, "spec/fixtures/numeric_leading_zeroes.csv".freeze, "spec/fixtures/pets.csv".freeze, "spec/fixtures/problematic.csv".freeze, "spec/fixtures/quote_char.csv".freeze, "spec/fixtures/quoted.csv".freeze, "spec/fixtures/quoted2.csv".freeze, "spec/fixtures/separator.csv".freeze, "spec/fixtures/skip_lines.csv".freeze, "spec/fixtures/trading.csv".freeze, "spec/fixtures/user_import.csv".freeze, "spec/fixtures/user_import_bad.csv".freeze, "spec/fixtures/valid_unicode.csv".freeze, "spec/fixtures/with_dashes.csv".freeze, "spec/fixtures/with_dates.csv".freeze, "spec/smarter_csv/binary_file_spec.rb".freeze, "spec/smarter_csv/carriage_return_spec.rb".freeze, "spec/smarter_csv/chunked_reading_spec.rb".freeze, "spec/smarter_csv/close_file_spec.rb".freeze, "spec/smarter_csv/column_separator_spec.rb".freeze, "spec/smarter_csv/convert_values_to_numeric_spec.rb".freeze, "spec/smarter_csv/extenstions_spec.rb".freeze, "spec/smarter_csv/hash_validations_spec.rb".freeze, "spec/smarter_csv/header_transformation_spec.rb".freeze, "spec/smarter_csv/invalid_headers_spec.rb".freeze, "spec/smarter_csv/keep_headers_spec.rb".freeze, "spec/smarter_csv/key_mapping_spec.rb".freeze, "spec/smarter_csv/line_ending_spec.rb".freeze, "spec/smarter_csv/load_basic_spec.rb".freeze, "spec/smarter_csv/malformed_spec.rb".freeze, "spec/smarter_csv/no_header_spec.rb".freeze, "spec/smarter_csv/not_downcase_header_spec.rb".freeze, "spec/smarter_csv/options_processing_spec.rb".freeze, "spec/smarter_csv/problematic.rb".freeze, "spec/smarter_csv/quoted_spec.rb".freeze, "spec/smarter_csv/remove_empty_values_spec.rb".freeze, "spec/smarter_csv/remove_keys_from_hashes_spec.rb".freeze, "spec/smarter_csv/remove_zero_values_spec.rb".freeze, "spec/smarter_csv/skip_lines_spec.rb".freeze, "spec/smarter_csv/strings_as_keys_spec.rb".freeze, "spec/smarter_csv/strip_chars_from_headers_spec.rb".freeze, "spec/smarter_csv/trading_spec.rb".freeze, "spec/smarter_csv/valid_unicode_spec.rb".freeze, "spec/spec.opts".freeze, "spec/spec/spec_helper.rb".freeze, "spec/spec_helper.rb".freeze]
 
-  spec.summary       = "Ruby Gem for smarter importing of CSV Files (and CSV-like files), with lots of optional features, e.g. chunked processing for huge CSV files"
-  spec.description   = "Ruby Gem for smarter importing of CSV Files as Array(s) of Hashes, with optional features for processing large files in parallel, embedded comments, unusual field- and record-separators, flexible mapping of CSV-headers to Hash-keys"
-  spec.homepage      = "https://github.com/tilo/smarter_csv"
-  spec.license       = 'MIT'
+  s.installed_by_version = "3.2.22" if s.respond_to? :installed_by_version
 
-  spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = spec.homepage
-  spec.metadata["changelog_uri"] = "https://github.com/tilo/smarter_csv/blob/main/CHANGELOG.md"
-
-  spec.required_ruby_version = ">= 2.5.0"
-
-  # Specify which files should be added to the gem when it is released.
-  # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
-  spec.files = Dir.chdir(__dir__) do
-    `git ls-files -z`.split("\x0").reject do |f|
-      (f == __FILE__) ||
-        f.match(%r{\A(?:(?:bin|test|spec|features)/|\.(?:git|travis|circleci)|appveyor)}) || f.match(/\.h\z/)
-    end
+  if s.respond_to? :specification_version then
+    s.specification_version = 4
   end
-  spec.test_files = spec.files.grep(%r{^(test|spec|features)/})
 
-  spec.executables   = spec.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
-  spec.require_paths = %w[lib ext]
-  spec.extensions = ["ext/smarter_csv/extconf.rb"]
-  spec.files += Dir.glob("ext/smarter_csv/**/*")
-
-  spec.add_development_dependency "awesome_print"
-  spec.add_development_dependency "codecov"
-  spec.add_development_dependency "pry"
-  spec.add_development_dependency "rspec"
-  spec.add_development_dependency "rubocop"
-  spec.add_development_dependency "simplecov"
+  if s.respond_to? :add_runtime_dependency then
+    s.add_development_dependency(%q<rspec>.freeze, [">= 0"])
+  else
+    s.add_dependency(%q<rspec>.freeze, [">= 0"])
+  end
 end

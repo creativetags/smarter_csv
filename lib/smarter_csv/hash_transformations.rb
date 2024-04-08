@@ -1,91 +1,97 @@
-# frozen_string_literal: true
-
 module SmarterCSV
-  class << self
-    def hash_transformations(hash, options)
-      # there may be unmapped keys, or keys purposedly mapped to nil or an empty key..
-      # make sure we delete any key/value pairs from the hash, which the user wanted to delete:
-      remove_empty_values = options[:remove_empty_values] == true
-      remove_zero_values = options[:remove_zero_values]
-      remove_values_matching = options[:remove_values_matching]
-      convert_to_numeric = options[:convert_values_to_numeric]
-      value_converters = options[:value_converters]
+  # these are some pre-defined data hash transformations which can be used
+  # all these take the data hash as the input
+  #
+  # the computed options can be accessed via @options
 
-      hash.each_with_object({}) do |(k, v), new_hash|
-        next if k.nil? || k == '' || k == :""
-        next if remove_empty_values && (has_rails ? v.blank? : blank?(v))
-        next if remove_zero_values && v.is_a?(String) && v =~ /^(0+|0+\.0+)$/ # values are Strings
-        next if remove_values_matching && v =~ remove_values_matching
+  def self.strip_spaces(hash, args=nil)
+    @@strip_spaces ||= Proc.new {|hash, args=nil|
+      keys = (args.nil? || args.empty?) ? hash.keys : ( args.is_a?(Array) ? args : [ args ] )
 
-        # deal with the :only / :except options to :convert_values_to_numeric
-        if convert_to_numeric && !limit_execution_for_only_or_except(options, :convert_values_to_numeric, k)
-          if v =~ /^[+-]?\d+\.\d+$/
-            v = v.to_f
-          elsif v =~ /^[+-]?\d+$/
-            v = v.to_i
-          end
-        end
-
-        converter = value_converters[k] if value_converters
-        v = converter.convert(v) if converter
-
-        new_hash[k] = v
-      end
-    end
-
-    # def hash_transformations(hash, options)
-    #   # there may be unmapped keys, or keys purposedly mapped to nil or an empty key..
-    #   # make sure we delete any key/value pairs from the hash, which the user wanted to delete:
-    #   hash.delete(nil)
-    #   hash.delete('')
-    #   hash.delete(:"")
-
-    #   if options[:remove_empty_values] == true
-    #     hash.delete_if{|_k, v| has_rails ? v.blank? : blank?(v)}
-    #   end
-
-    #   hash.delete_if{|_k, v| !v.nil? && v =~ /^(0+|0+\.0+)$/} if options[:remove_zero_values] # values are Strings
-    #   hash.delete_if{|_k, v| v =~ options[:remove_values_matching]} if options[:remove_values_matching]
-
-    #   if options[:convert_values_to_numeric]
-    #     hash.each do |k, v|
-    #       # deal with the :only / :except options to :convert_values_to_numeric
-    #       next if limit_execution_for_only_or_except(options, :convert_values_to_numeric, k)
-
-    #       # convert if it's a numeric value:
-    #       case v
-    #       when /^[+-]?\d+\.\d+$/
-    #         hash[k] = v.to_f
-    #       when /^[+-]?\d+$/
-    #         hash[k] = v.to_i
-    #       end
-    #     end
-    #   end
-
-    #   if options[:value_converters]
-    #     hash.each do |k, v|
-    #       converter = options[:value_converters][k]
-    #       next unless converter
-
-    #       hash[k] = converter.convert(v)
-    #     end
-    #   end
-
-    #   hash
-    # end
-
-    protected
-
-    # acts as a road-block to limit processing when iterating over all k/v pairs of a CSV-hash:
-    def limit_execution_for_only_or_except(options, option_name, key)
-      if options[option_name].is_a?(Hash)
-        if options[option_name].has_key?(:except)
-          return true if Array(options[option_name][:except]).include?(key)
-        elsif options[option_name].has_key?(:only)
-          return true unless Array(options[option_name][:only]).include?(key)
-        end
-      end
-      false
-    end
+      keys.each {|key| hash[key].strip! unless hash[key].nil? } # &. syntax was introduced in Ruby 2.3 - need to stay backwards compatible
+      hash
+    }
+    @@strip_spaces.call(hash)
   end
+
+  def self.remove_blank_values(hash, args=nil)
+    @@remove_blank_values ||= Proc.new {|hash, args=nil|
+      keys = (args.nil? || args.empty?) ? hash.keys : ( args.is_a?(Array) ? args : [ args ] )
+
+      keys.each {|key| hash.delete(key) if hash[key].nil? || hash[key].is_a?(String) && hash[key] !~ /[^[:space:]]/ }
+      hash
+    }
+    @@remove_blank_values.call(hash)
+  end
+
+  def self.remove_zero_values(hash, args=nil)
+    @@remove_zero_values ||= Proc.new {|hash, args=nil|
+      keys = (args.nil? || args.empty?) ? hash.keys : ( args.is_a?(Array) ? args : [ args ] )
+
+      keys.each {|key| hash.delete(key) if hash[key].is_a?(Numeric) && hash[key].zero? }
+      hash
+    }
+    @@remove_zero_values.call(hash)
+  end
+
+  def self.convert_values_to_numeric(hash, args=nil)
+    @@convert_values_to_numeric ||= Proc.new {|hash, args=nil|
+      keys = (args.nil? || args.empty?) ? hash.keys : ( args.is_a?(Array) ? args : [ args ] )
+
+      keys.each {|k|
+        case hash[k]
+        when /^[+-]?\d+\.\d+$/
+          hash[k] = hash[k].to_f
+        when /^[+-]?\d+$/
+          hash[k] = hash[k].to_i
+        end
+      }
+      hash
+    }
+    @@convert_values_to_numeric.call(hash)
+  end
+
+  def self.convert_values_to_numeric_unless_leading_zeroes(hash, args=nil)
+    @@convert_values_to_numeric_unless_leading_zeroes ||= Proc.new {|hash, args=nil|
+      keys = (args.nil? || args.empty?) ? hash.keys : ( args.is_a?(Array) ? args : [ args ] )
+
+      keys.each {|k|
+        case hash[k]
+        when /^[+-]?[1-9]\d*\.\d+$/
+          hash[k] = hash[k].to_f
+        when /^[+-]?[1-9]\d*$/
+          hash[k] = hash[k].to_i
+        end
+      }
+      hash
+    }
+    @@convert_values_to_numeric_unless_leading_zeroes.call(hash)
+  end
+
+  # IMPORTANT NOTE:
+  # this can lead to cases where a nil or empty value gets converted into 0 or 0.0,
+  # and can then not be properly removed!
+  #
+  # you should first try to use convert_values_to_numeric or convert_values_to_numeric_unless_leading_zeroes
+  #
+  def self.convert_to_integer(hash, args=nil)
+    @@convert_to_integer ||= Proc.new{|hash, args=nil|
+      keys = (args.nil? || args.empty?) ? hash.keys : ( args.is_a?(Array) ? args : [ args ] )
+
+      keys.each {|key| hash[key] = hash[key].to_i }
+      hash
+    }
+    @@convert_to_integer.call(hash, args)
+  end
+
+  def self.convert_to_float(hash, args=nil)
+    @@convert_to_integer ||= Proc.new{|hash, args=nil|
+      keys = (args.nil? || args.empty?) ? hash.keys : ( args.is_a?(Array) ? args : [ args ] )
+
+      keys.each {|key| hash[key] = hash[key].to_f }
+      hash
+    }
+    @@convert_to_float.call(hash, args)
+  end
+
 end

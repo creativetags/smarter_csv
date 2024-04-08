@@ -1,69 +1,189 @@
-# frozen_string_literal: true
+require 'spec_helper'
+
+fixture_path = 'spec/fixtures'
 
 describe 'options processing' do
-  describe '#process_options' do
-    it 'prints out given options in verbose mode' do
-      options = {chunk_size: 10, verbose: true}
-      allow($stdout).to receive(:puts)
-      expect($stdout).to receive(:puts).with(/User provided options:/)
-      expect($stdout).to receive(:puts).with(/Computed options:/)
-      generated_options = SmarterCSV.process_options(options)
-      expect(generated_options[:chunk_size]).to eq 10
-    end
 
-    it 'it has the correct default options, when no input is given' do
-      generated_options = SmarterCSV.process_options({})
-      expect(generated_options).to eq SmarterCSV::DEFAULT_OPTIONS
-    end
-
-    it 'lets the user clear out all default options' do
-      options = {defaults: :none}
-      generated_options = SmarterCSV.process_options(options)
-      expect(generated_options).to eq options.merge(SmarterCSV::DEFAULT_OPTIONS)
-    end
-
-    it 'corrects :invalid_byte_sequence if nil is given' do
-      generated_options = SmarterCSV.process_options(invalid_byte_sequence: nil)
-      expect(generated_options[:invalid_byte_sequence]).to eq ''
-    end
-
-    it 'works with frozen options hash' do
-      options = {chunk_size: 1}.freeze
-      generated_options = SmarterCSV.process_options(options)
-      expect(generated_options[:chunk_size]).to eq 1
+  SmarterCSV::OBSOLETE_OPTIONS.each do |key,value|
+    it "raises an error if option #{key} is given" do
+      options = {key => value}
+      expect {
+        SmarterCSV.process_options(options)
+      }.to raise_exception(SmarterCSV::ObsoleteOptions)
     end
   end
 
-  describe '#validate_options!' do
-    [:row_sep, :col_sep, :quote_char].each do |opt|
-      # empty values
-      [nil, ''].each do |val|
-        context "with invalid value #{val}" do
-          it "raises an exception for #{opt} set #{val}" do
-            expect do
-              invalid_options = {
-                opt => val,
-              }
-              SmarterCSV.process_options(invalid_options)
-            end.to raise_exception(SmarterCSV::ValidationError, "[\"invalid #{opt}\"]")
-          end
-        end
-      end
-
-      it "does not raise an exception for #{opt} set non-empty" do
-        expect do
-          invalid_options = {
-            opt => ' ',
-          }
-          SmarterCSV.process_options(invalid_options)
-        end.not_to raise_exception
-      end
-    end
+  it 'it has the correct default options, when no input is given' do
+    options = {}
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
   end
 
-  describe '#default_options' do
-    it 'surfaces the DEFAULT_OPTIONS hash' do
-      expect(SmarterCSV.default_options).to eq SmarterCSV::DEFAULT_OPTIONS
-    end
+  it 'lets the user clear out all default options' do
+    options = {defaults: :none}
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq options
+  end
+
+  it 'it has the correct v1 default options when requested' do
+    options = {defaults: :v1}
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::V1_TRANSFORMATIONS).merge(options)
+  end
+
+  it 'appends header_transformations to the default ones' do
+    options = {header_transformations: [:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:header_transformations] += [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'appends header_validations to the default ones' do
+    options = {header_validations: [:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:header_validations] += [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'appends data_transformations to the default ones' do
+    options = {data_transformations: [:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:data_transformations] += [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'appends data_validations to the default ones' do
+    options = {data_validations: [:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:data_validations] += [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'appends hash_transformations to the default ones' do
+    options = {hash_transformations: [:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:hash_transformations] += [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'appends hash_validations to the default ones' do
+    options = {hash_validations: [:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:hash_validations] += [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear all default validations/transformations' do
+    options = { defaults: :no_procs }
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq SmarterCSV::DEFAULT_OPTIONS.merge(options)
+  end
+
+  it 'lets the user clear out header_transformations' do
+    options = {header_transformations: :none}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:header_transformations] = []
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out header_validations' do
+    options = {header_validations: :none}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:header_validations] = []
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out data_transformations' do
+    options = {data_transformations: :none}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:data_transformations] = []
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out data_transformations' do
+    options = {data_transformations: :none}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:data_transformations] = []
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out hash_transformations' do
+    options = {hash_transformations: :none}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:hash_transformations] = []
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out hash_transformations' do
+    options = {hash_transformations: :none}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:hash_transformations] = []
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out header_transformations and define their own' do
+    options = {header_transformations: [:none,:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:header_transformations] = [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out header_validations and define their own' do
+    options = {header_validations: [:none,:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:header_validations] = [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out data_transformations and define their own' do
+    options = {hash_transformations: [:none,:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:hash_transformations] = [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out data_validations and define their own' do
+    options = {data_validations: [:none,:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:data_validations] = [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out hash_transformations and define their own' do
+    options = {hash_transformations: [:none,:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:hash_transformations] = [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+  it 'lets the user clear out hash_validations and define their own' do
+    options = {hash_validations: [:none,:a,:b,:c]}
+    expected = SmarterCSV::DEFAULT_OPTIONS.merge(SmarterCSV::BASE_TRANSFORMATIONS)
+    expected[:hash_validations] = [:a,:b,:c]
+    generated_options = SmarterCSV.process_options(options)
+    generated_options.should eq expected
+  end
+
+
+  it 'corrects :invalid_byte_sequence if nil is given' do
+    generated_options = SmarterCSV.process_options(invalid_byte_sequence: nil)
+    generated_options[:invalid_byte_sequence].should eq ''
   end
 end

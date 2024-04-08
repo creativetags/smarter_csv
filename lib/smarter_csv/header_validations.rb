@@ -1,34 +1,23 @@
-# frozen_string_literal: true
-
 module SmarterCSV
-  class << self
-    def header_validations(headers, options)
-      check_duplicate_headers(headers, options)
-      check_required_headers(headers, options)
-    end
+  # these are some pre-defined header validations which can be used
+  # all these take the headers array as the input
+  #
+  # the computed options can be accessed via @options
 
-    def check_duplicate_headers(headers, _options)
-      header_counts = Hash.new(0)
-      headers.each { |header| header_counts[header] += 1 unless header.nil? }
+  def self.unique_headers(array)
+    @@unique_headers ||= Proc.new {|headers|
+      dupes = headers.each_with_object({}){ |x,h| h[x] ||= 0; h[x] += 1}.reject{|k,v| k == nil || v < 2 } # when we remove fields we map them to nil - we don't count these as dupes
+      dupes.empty? ? nil : raise( SmarterCSV::DuplicateHeaders, "Duplicate Headers in CSV: #{dupes.inspect}" )
+    }
+    @@unique_headers.call(array)
+  end
 
-      duplicates = header_counts.select { |_, count| count > 1 }
-
-      unless duplicates.empty?
-        raise(SmarterCSV::DuplicateHeaders, "Duplicate Headers in CSV: #{duplicates.inspect}")
-      end
-    end
-
-    require 'set'
-
-    def check_required_headers(headers, options)
-      if options[:required_keys] && options[:required_keys].is_a?(Array)
-        headers_set = headers.to_set
-        missing_keys = options[:required_keys].select { |k| !headers_set.include?(k) }
-
-        unless missing_keys.empty?
-          raise SmarterCSV::MissingKeys, "ERROR: missing attributes: #{missing_keys.join(',')}. Check `SmarterCSV.headers` for original headers."
-        end
-      end
-    end
+  def self.required_headers(array,required=[])
+    @@required_headers ||= Proc.new {|headers, required=[]|
+      raise( SmarterCSV::IncorrectOption , "ERROR: required_headers validation needs an array argument" ) unless required.is_a?(Array)
+      missing = required.each_with_object([]){ |x,a| a << x unless headers.include?(x) }
+      missing.empty? ? nil : raise( SmarterCSV::MissingHeaders, "Missing Headers in CSV: #{missing.inspect}" )
+    }
+    @@required_headers.call(array,required)
   end
 end

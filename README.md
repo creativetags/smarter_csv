@@ -1,426 +1,321 @@
-
-# SmarterCSV
-
- [![codecov](https://codecov.io/gh/tilo/smarter_csv/branch/main/graph/badge.svg?token=1L7OD80182)](https://codecov.io/gh/tilo/smarter_csv) [![Gem Version](https://badge.fury.io/rb/smarter_csv.svg)](http://badge.fury.io/rb/smarter_csv)
+# SmarterCSV 2
 
 
-#### LATEST CHANGES
+[![Build Status](https://secure.travis-ci.org/tilo/smarter_csv.svg?branch=2.0-develop)](http://travis-ci.org/tilo/smarter_csv)
+[![Gem Version](https://badge.fury.io/rb/smarter_csv.svg)](http://badge.fury.io/rb/smarter_csv)
 
-* Version 1.10.0 has BREAKING CHANGES:
-
-    Changed behavior:
-     + when `user_provided_headers` are provided:
-       * if they are not unique, an exception will now be raised
-       * they are taken "as is", no header transformations can be applied
-       * when they are given as strings or as symbols, it is assumed that this is the desired format
-       * the value of the `strings_as_keys` options will be ignored
-         
-     + option `duplicate_header_suffix` now defaults to `''` instead of `nil`.
-       * this allows automatic disambiguation when processing of CSV files with duplicate headers, by appending a number
-       * explicitly set this option to `nil` to get the behavior from previous versions.
-
-#### Development Branches
-
-* default branch is `main` for 1.x development
-  
-* 2.x development is [MOVED TO THIS PR](https://github.com/tilo/smarter_csv/pull/267)
-  - 2.x behavior is still EXPERIMENTAL - DO NOT USE in production
 
 ---------------
+#### Service Announcement
 
-#### SmarterCSV 1.x [Current Version]
+**SmarterCSV 2.0.0.pre1 is out soon! 🎉 You are looking at the 2.x documentation.**
 
-`smarter_csv` is a Ruby Gem for smarter importing of CSV Files as Array(s) of Hashes, suitable for direct processing with ActiveRecord, parallel processing, kicking-off batch jobs with Sidekiq, or oploading data to S3.
+If you are looking for SmarterCSV 1.x, please check the [README on the `1.2-stable` branch](https://github.com/tilo/smarter_csv/tree/1.2-stable).
 
-The goals for SmarterCSV are: 
-  * ease of use for handling most common CSV files without having to tweak options
-  * improve robustness of your code when you have no control over the quality of the CSV files which are processed
-  * formatting each row of data as a hash, in order to allow easy processing with ActiveRecord, parallel processing, kicking-off batch jobs with Sidekiq, or oploading data to S3.
+For feature requests, feedback, comments on 2.x please open a GitHub comment.
 
-#### Rescue from Exceptions
-While SmarterCSV uses sensible defaults to process the most common CSV files, it will raise exceptions if it can not auto-detect `col_sep`, `row_sep`, or if it encounters other problems. Therefore, when calling `SmarterCSV.process`, please rescue from `SmarterCSVException`, and handle outliers according to your requirements.
+---------------
+#### SmarterCSV
 
-If you encounter unusual CSV files, please follow the tips in the Troubleshooting section below. You can use the options below to accomodate for unusual formats.
+Simple, efficient CSV processing for Ruby.
 
-#### Features
+SmarterCSV is a Ruby Gem for smarter importing of CSV Files as Array(s) of Hashes, suitable for parallel processing with Resque or Sidekiq,
+as well as direct processing with ActiveRecord, Mongoiid.
 
-One `smarter_csv` user wrote:
+One SmarterCSV user wrote:
 
   *Best gem for CSV for us yet. [...] taking an import process from 7+ hours to about 3 minutes.
-   [...] Smarter CSV was a big part and helped clean up our code ALOT*
+   [...] SmarterCSV was a big part and helped clean up our code ALOT*
 
-`smarter_csv` has lots of features:
+SmarterCSV was designed with the use cases in mind that you want to use the imported data to either update a database record, or pass the data on to a background worker.
+
+
+### Requirements
+
+SmarterCSV supports Ruby >= 2.2, and is not tied to a specific Rails version.
+Please take note that Ruby 2.2 EOL date is scheduled for 2018-03-31
+
+### Installation
+
+
+      gem install smarter_csv
+
+
+### [Docs and Examples are on the Wiki](https://github.com/tilo/smarter_csv/wiki)
+
+Find the examples and documentation please check the [Wiki pages](https://github.com/tilo/smarter_csv/wiki)
+
+
+### Features
+
+Now SmarterCSV 2.0 is out, and strives to keep the same features, but using a different implementation which allows you more control when you need to handle special cases.
+Becaues of this, some of the options from version 1.x are no longer supported. Alternative solutions can be found in the Upgrading guide.
+
+SmarterCSV 2.x has lots of features:
+
  * able to process large CSV-files
  * able to chunk the input from the CSV file to avoid loading the whole CSV file into memory
  * return a Hash for each line of the CSV file, so we can quickly use the results for either creating MongoDB or ActiveRecord entries, or further processing with Resque
  * able to pass a block to the `process` method, so data from the CSV file can be directly processed (e.g. Resque.enqueue )
  * allows to have a bit more flexible input format, where comments are possible, and col_sep,row_sep can be set to any character sequence, including control characters.
- * able to re-map CSV "column names" to Hash-keys of your choice (normalization)
- * able to ignore "columns" in the input (delete columns)
- * able to eliminate nil or empty fields from the result hashes (default)
 
-#### Assumptions / Limitations
-* It is assumed that the escape character is `\`, as on UNIX and Windows systems.
-* It is assumed that quote charcters around fields are balanced, e.g. valid: `"field"`, invalid: `"field\"`
-  e.g. an escaped `quote_char` does not denote the end of a field.
-* This Gem is only for importing CSV files - writing of CSV files is not supported at this time.
+ * able to transmogrify CSV column names to the Hash keys of your choice (see: header_transformations)
+ * able to ignore unwanted CSV columns and exclude them from the resulting hash (just map them to `nil`)
+ * able to do header validations, based on the resulting keys computed from CSV column names (see: header_validations)
+ * able to do data transformations (these apply for all data in a row)
+ * able to do hash_transformations (based on the final key/value pairs in the hash)
+ * able to do hash validations (which can surface the errors per line)
+
+ * able to eliminate key/value pairs with blank, or `nil` values from the result hashes.
+ * you can use the transformations to implement any custom behavior by passing-in one or more `Proc`s.
+
+NOTE; This Gem is only for importing CSV files - writing of CSV files is not supported at this time, but writing is on the feature list for the future..+
+
+
+#### Default Behavior vs Customization
+
+
+SmarterCSV was designed with the use cases in mind that you want to use the imported data to either update a database record, or pass the data on to a background worker.
+It's default behavior is to change the headers of a CSV file into symbols, which are then used in a hash that gets constructed for each line of the CSV file.
+This default behavior can be changed and customized.
+
 
 ### Why?
 
-Ruby's CSV library's API is pretty old, and it's processing of CSV-files returning Arrays of Arrays feels 'very close to the metal'. The output is not easy to use - especially not if you want to create database records or Sidekiq jobs with it. Another shortcoming is that Ruby's CSV library does not have good support for huge CSV-files, e.g. there is no support for 'chunking' and/or parallel processing of the CSV-content (e.g. with Sidekiq).
+Ruby's CSV library's API is pretty old, and it's processing of CSV-files returning Arrays of Arrays feels 'very close to the metal'. The output is not easy to use - especially not if you want to create database records from it. Another shortcoming is that Ruby's CSV library does not have good support for huge CSV-files, e.g. there is no support for 'chunking' and/or parallel processing of the CSV-content (e.g. with Resque or Sidekiq),
 
-As the existing CSV libraries didn't fit my needs, I was writing my own CSV processing - specifically for use in connection with Rails ORMs like Mongoid, MongoMapper and ActiveRecord. In those ORMs you can easily pass a hash with attribute/value pairs to the create() method. The lower-level Mongo driver and Moped also accept larger arrays of such hashes to create a larger amount of records quickly with just one call. The same patterns are used when you pass data to Sidekiq jobs.
+As the existing CSV libraries didn't fit my needs, I was writing my own CSV processing - specifically for use in connection with Rails ORMs like Mongoid, MongoMapper or ActiveRecord. In those ORMs you can easily pass a hash with attribute/value pairs to the create() method. The lower-level Mongo driver and Moped also accept larger arrays of such hashes to create a larger amount of records quickly with just one call.
 
-For processing large CSV files it is essential to process them in chunks, so the memory impact is minimized.
+## Parallel Processing
+[Jack](https://github.com/xjlin0) wrote an interesting article about [Speeding up CSV parsing with parallel processing](http://xjlin0.github.io/tech/2015/05/25/faster-parsing-csv-with-parallel-processing)
 
-### How?
-
-The two main choices you have in terms of how to call `SmarterCSV.process` are:
- * calling `process` with or without a block
- * passing a `:chunk_size` to the `process` method, and processing the CSV-file in chunks, rather than in one piece.
-
-By default (since version 1.8.0), detection of the column and row separators is set to automatic `row_sep: :auto`, `col_sep: :auto`. This should make it easier to process any CSV files without having to examine the line endings or column separators.
-
-You can change the setting `:auto_row_sep_chars` to only analyze the first N characters of the file (default is 500 characters); nil or 0 will check the whole file).
-You can also set the `:row_sep` manually! Checkout Example 4 for unusual `:row_sep` and `:col_sep`.
-
-### Troubleshooting
-
-In case your CSV file is not being parsed correctly, try to examine it in a text editor. For closer inspection  a tool like `hexdump` can help find otherwise hidden control character or byte sequences like [BOMs](https://en.wikipedia.org/wiki/Byte_order_mark).
-
-```
-$ hexdump -C spec/fixtures/bom_test_feff.csv
-00000000  fe ff 73 6f 6d 65 5f 69  64 2c 74 79 70 65 2c 66  |..some_id,type,f|
-00000010  75 7a 7a 62 6f 78 65 73  0d 0a 34 32 37 36 36 38  |uzzboxes..427668|
-00000020  30 35 2c 7a 69 7a 7a 6c  65 73 2c 31 32 33 34 0d  |05,zizzles,1234.|
-00000030  0a 33 38 37 35 39 31 35  30 2c 71 75 69 7a 7a 65  |.38759150,quizze|
-00000040  73 2c 35 36 37 38 0d 0a                           |s,5678..|
-```
-
-### Articles
-* [Processing 1.4 Million CSV Records in Ruby, fast ](https://lcx.wien/blog/processing-14-million-csv-records-in-ruby/)
-* [Speeding up CSV parsing with parallel processing](http://xjlin0.github.io/tech/2015/05/25/faster-parsing-csv-with-parallel-processing)
-
-### Examples
-
-Here are some examples to demonstrate the versatility of SmarterCSV.
-
-**It is generally recommended to rescue `SmarterCSVException` or it's sub-classes.**
-
-By default SmarterCSV determines the `row_sep` and `col_sep` values automatically. In cases where the automatic detection fails, an exception will be raised, e.g. `NoColSepDetected`. Rescuing from these exceptions will make sure that you don't miss processing CSV files, in case users upload CSV files with unexpected formats.
-
-In rare cases you may have to manually set these values, after going through the troubleshooting procedure described above.
-
-#### Example 1a: How SmarterCSV processes CSV-files as array of hashes:
-Please note how each hash contains only the keys for columns with non-null values.
-
-```ruby
-     $ cat pets.csv
-     first name,last name,dogs,cats,birds,fish
-     Dan,McAllister,2,,,
-     Lucy,Laweless,,5,,
-     Miles,O'Brian,,,,21
-     Nancy,Homes,2,,1,
-     $ irb
-     > require 'smarter_csv'
-      => true
-     > pets_by_owner = SmarterCSV.process('/tmp/pets.csv')
-      => [ {:first_name=>"Dan", :last_name=>"McAllister", :dogs=>"2"},
-           {:first_name=>"Lucy", :last_name=>"Laweless", :cats=>"5"},
-           {:first_name=>"Miles", :last_name=>"O'Brian", :fish=>"21"},
-           {:first_name=>"Nancy", :last_name=>"Homes", :dogs=>"2", :birds=>"1"}
-         ]
-```
-
-
-#### Example 1b: How SmarterCSV processes CSV-files as chunks, returning arrays of hashes:
-Please note how the returned array contains two sub-arrays containing the chunks which were read, each chunk containing 2 hashes.
-In case the number of rows is not cleanly divisible by `:chunk_size`, the last chunk contains fewer hashes.
-
-```ruby
-     > pets_by_owner = SmarterCSV.process('/tmp/pets.csv', {:chunk_size => 2, :key_mapping => {:first_name => :first, :last_name => :last}})
-       => [ [ {:first=>"Dan", :last=>"McAllister", :dogs=>"2"}, {:first=>"Lucy", :last=>"Laweless", :cats=>"5"} ],
-            [ {:first=>"Miles", :last=>"O'Brian", :fish=>"21"}, {:first=>"Nancy", :last=>"Homes", :dogs=>"2", :birds=>"1"} ]
-          ]
-```
-
-#### Example 1c: How SmarterCSV processes CSV-files as chunks, and passes arrays of hashes to a given block:
-Please note how the given block is passed the data for each chunk as the parameter (array of hashes),
-and how the `process` method returns the number of chunks when called with a block
-
-```ruby
-     > total_chunks = SmarterCSV.process('/tmp/pets.csv', {:chunk_size => 2, :key_mapping => {:first_name => :first, :last_name => :last}}) do |chunk|
-         chunk.each do |h|   # you can post-process the data from each row to your heart's content, and also create virtual attributes:
-           h[:full_name] = [h[:first],h[:last]].join(' ')  # create a virtual attribute
-           h.delete(:first) ; h.delete(:last)              # remove two keys
-         end
-         puts chunk.inspect   # we could at this point pass the chunk to a Resque worker..
-       end
-
-       [{:dogs=>"2", :full_name=>"Dan McAllister"}, {:cats=>"5", :full_name=>"Lucy Laweless"}]
-       [{:fish=>"21", :full_name=>"Miles O'Brian"}, {:dogs=>"2", :birds=>"1", :full_name=>"Nancy Homes"}]
-        => 2
-```
-#### Example 2: Reading a CSV-File in one Chunk, returning one Array of Hashes:
-```ruby
-    filename = '/tmp/input_file.txt' # TAB delimited file, each row ending with Control-M
-    recordsA = SmarterCSV.process(filename, {:col_sep => "\t", :row_sep => "\cM"})  # no block given
-
-    => returns an array of hashes
-```
-#### Example 3: Populate a MySQL or MongoDB Database with SmarterCSV:
-```ruby
-    # without using chunks:
-    filename = '/tmp/some.csv'
-    options = {:key_mapping => {:unwanted_row => nil, :old_row_name => :new_name}}
-    n = SmarterCSV.process(filename, options) do |array|
-          # we're passing a block in, to process each resulting hash / =row (the block takes array of hashes)
-          # when chunking is not enabled, there is only one hash in each array
-          MyModel.create( array.first )
-    end
-
-     => returns number of chunks / rows we processed
-```
-
-#### Example 4: Processing a CSV File, and inserting batch jobs in Sidekiq:
-```ruby
-    filename = '/tmp/input.csv' # CSV file containing ids or data to process
-    options = { :chunk_size => 100 }
-    n = SmarterCSV.process(filename, options) do |chunk|
-      Sidekiq::Client.push_bulk(
-        'class' => SidekiqIndividualWorkerClass,
-        'args' => chunk,
-      )
-      # OR:
-      # SidekiqBatchWorkerClass.process_async(chunk ) # pass an array of hashes to Sidekiq workers for parallel processing
-    end
-    => returns number of chunks
-```
-
-#### Example 4b: Reading a CSV-like File, and Processing it with Sidekiq:
-```ruby
-    filename = '/tmp/strange_db_dump'   # a file with CRTL-A as col_separator, and with CTRL-B\n as record_separator (hello iTunes!)
-    options = {
-      :col_sep => "\cA", :row_sep => "\cB\n", :comment_regexp => /^#/,
-      :chunk_size => 100 , :key_mapping => {:export_date => nil, :name => :genre}
-    }
-    n = SmarterCSV.process(filename, options) do |chunk|
-        SidekiqWorkerClass.process_async(chunk ) # pass an array of hashes to Sidekiq workers for parallel processing
-    end
-    => returns number of chunks
-```
-#### Example 5: Populate a MongoDB Database in Chunks of 100 records with SmarterCSV:
-```ruby
-    # using chunks:
-    filename = '/tmp/some.csv'
-    options = {:chunk_size => 100, :key_mapping => {:unwanted_row => nil, :old_row_name => :new_name}}
-    n = SmarterCSV.process(filename, options) do |chunk|
-          # we're passing a block in, to process each resulting hash / row (block takes array of hashes)
-          # when chunking is enabled, there are up to :chunk_size hashes in each chunk
-          MyModel.collection.insert( chunk )   # insert up to 100 records at a time
-    end
-
-     => returns number of chunks we processed
-```
-
-#### Example 6: Using Value Converters
-
-NOTE: If you use `key_mappings` and `value_converters`, make sure that the value converters has references the keys based on the final mapped name, not the original name in the CSV file.
-```ruby
-    $ cat spec/fixtures/with_dates.csv
-    first,last,date,price
-    Ben,Miller,10/30/1998,$44.50
-    Tom,Turner,2/1/2011,$15.99
-    Ken,Smith,01/09/2013,$199.99
-    $ irb
-    > require 'smarter_csv'
-    > require 'date'
-
-    # define a custom converter class, which implements self.convert(value)
-    class DateConverter
-      def self.convert(value)
-        Date.strptime( value, '%m/%d/%Y') # parses custom date format into Date instance
-      end
-    end
-
-    class DollarConverter
-      def self.convert(value)
-        value.sub('$','').to_f
-      end
-    end
-
-    options = {:value_converters => {:date => DateConverter, :price => DollarConverter}}
-    data = SmarterCSV.process("spec/fixtures/with_dates.csv", options)
-    data[0][:date]
-      => #<Date: 1998-10-30 ((2451117j,0s,0n),+0s,2299161j)>
-    data[0][:date].class
-      => Date
-    data[0][:price]
-      => 44.50
-    data[0][:price].class
-      => Float
-```
-
-## Documentation
-
-The `process` method reads and processes a "generalized" CSV file and returns the contents either as an Array of Hashes,
-or an Array of Arrays, which contain Hashes, or processes Chunks of Hashes via a given block.
-
-    SmarterCSV.process(filename, options={}, &block)
-
-The options and the block are optional.
-
-`SmarterCSV.process` supports the following options:
-
-#### Options:
-
-     | Option                      | Default  |  Explanation                                                                         |
-     ---------------------------------------------------------------------------------------------------------------------------------
-     | :chunk_size                 |   nil    | if set, determines the desired chunk-size (defaults to nil, no chunk processing)     |
-     |                             |          |                                                                                      |
-     | :file_encoding              |   utf-8  | Set the file encoding eg.: 'windows-1252' or 'iso-8859-1'                            |
-     | :invalid_byte_sequence      |   ''     | what to replace invalid byte sequences with                                          |
-     | :force_utf8                 |   false  | force UTF-8 encoding of all lines (including headers) in the CSV file                |
-     | :skip_lines                 |   nil    | how many lines to skip before the first line or header line is processed             |
-     | :comment_regexp             |   nil    | regular expression to ignore comment lines (see NOTE on CSV header), e.g./\A#/       |
-     ---------------------------------------------------------------------------------------------------------------------------------
-     | :col_sep                    |   :auto   | column separator (default was ',')                                           |
-     | :force_simple_split         |   false  | force simple splitting on :col_sep character for non-standard CSV-files.             |
-     |                             |          | e.g. when :quote_char is not properly escaped                                        |
-     | :row_sep                    |  :auto   | row separator or record separator (previous default was system's $/ , which defaulted to "\n") |
-     |                             |          | This can also be set to :auto, but will process the whole cvs file first  (slow!)    |
-     | :auto_row_sep_chars         |   500    | How many characters to analyze when using `:row_sep => :auto`. nil or 0 means whole file. |
-     | :quote_char                 |   '"'    | quotation character                                                                  |
-     ---------------------------------------------------------------------------------------------------------------------------------
-     | :headers_in_file            |   true   | Whether or not the file contains headers as the first line.                          |
-     |                             |          | Important if the file does not contain headers,                                      |
-     |                             |          | otherwise you would lose the first line of data.                                     |
-     | :duplicate_header_suffix    |   ''     | Adds numbers to duplicated headers and separates them by the given suffix.           |
-     |                             |          | Set this to nil to raise `DuplicateHeaders` error instead (previous behavior)        |
-     | :user_provided_headers      |   nil    | *careful with that axe!*                                                             |
-     |                             |          | user provided Array of header strings or symbols, to define                          |
-     |                             |          | what headers should be used, overriding any in-file headers.                         |
-     |                             |          | You can not combine the :user_provided_headers and :key_mapping options              |
-     | :remove_empty_hashes        |   true   | remove / ignore any hashes which don't have any key/value pairs or all empty values  |
-     | :verbose                    |   false  | print out line number while processing (to track down problems in input files)       |
-     | :with_line_numbers          |   false  | add :csv_line_number to each data hash                                               |
-     ---------------------------------------------------------------------------------------------------------------------------------
-
-#### Deprecated 1.x Options: to be replaced in 2.0
-
-There have been a lot of 1-offs and feature creep around these options, and going forward we'll have a simpler, but more flexible way to address these features.
-
-Instead of these options, there will be a new and more flexible way to process the header fields, as well as the fields in each line of the CSV.
-And header and data validations will also be supported in 2.x
-
-     | Option                      | Default  |  Explanation                                                                         |
-     ---------------------------------------------------------------------------------------------------------------------------------
-     | :key_mapping                |   nil    | a hash which maps headers from the CSV file to keys in the result hash               |
-     | :silence_missing_keys        |   false  | ignore missing keys in `key_mapping`                                   |
-     |                             |          | if set to true: makes all mapped keys optional                         |
-     |                             |          | if given an array, makes only the keys listed in it optional                         |
-     | :required_keys              |   nil    | An array. Specify the required names AFTER header transformation.                  |
-     | :required_headers           |   nil    | (DEPRECATED / renamed) Use `required_keys` instead                          |
-     |                             |          | or an exception is raised   No validation if nil is given.                           |
-     | :remove_unmapped_keys       |   false  | when using :key_mapping option, should non-mapped keys / columns be removed?         |
-     | :downcase_header            |   true   | downcase all column headers                                                          |
-     | :strings_as_keys            |   false  | use strings instead of symbols as the keys in the result hashes                      |
-     | :strip_whitespace           |   true   | remove whitespace before/after values and headers                                    |
-     | :keep_original_headers      |   false  | keep the original headers from the CSV-file as-is.                                   |
-     |                             |          | Disables other flags manipulating the header fields.                                 |
-     | :strip_chars_from_headers   |   nil    | RegExp to remove extraneous characters from the header line (e.g. if headers are quoted) |
-     ---------------------------------------------------------------------------------------------------------------------------------
-     | :value_converters           |   nil    | supply a hash of :header => KlassName; the class needs to implement self.convert(val)|
-     | :remove_empty_values        |   true   | remove values which have nil or empty strings as values                              |
-     | :remove_zero_values         |   false  | remove values which have a numeric value equal to zero / 0                           |
-     | :remove_values_matching     |   nil    | removes key/value pairs if value matches given regular expressions. e.g.:            |
-     |                             |          | /^\$0\.0+$/ to match $0.00 , or /^#VALUE!$/ to match errors in Excel spreadsheets    |
-     | :convert_values_to_numeric  |   true   | converts strings containing Integers or Floats to the appropriate class              |
-     |                             |          |      also accepts either {:except => [:key1,:key2]} or {:only => :key3}              |
-     ---------------------------------------------------------------------------------------------------------------------------------
-
-
-#### NOTES about File Encodings:
- * if you have a CSV file which contains unicode characters, you can process it as follows:
-
-```ruby
-       File.open(filename, "r:bom|utf-8") do |f|
-         data = SmarterCSV.process(f);
-       end
-```
-* if the CSV file with unicode characters is in a remote location, similarly you need to give the encoding as an option to the `open` call:
-```ruby
-       require 'open-uri'
-       file_location = 'http://your.remote.org/sample.csv'
-       open(file_location, 'r:utf-8') do |f|   # don't forget to specify the UTF-8 encoding!!
-         data = SmarterCSV.process(f)
-       end
-```
-
-#### NOTES about CSV Headers:
- * as this method parses CSV files, it is assumed that the first line of any file will contain a valid header
- * the first line with the header might be commented out, in which case you will need to set `comment_regexp: /\A#/`
-   This is no longer handled automatically since 1.5.0.
- * any occurences of :comment_regexp or :row_sep will be stripped from the first line with the CSV header
- * any of the keys in the header line will be downcased, spaces replaced by underscore, and converted to Ruby symbols before being used as keys in the returned Hashes
- * you can not combine the :user_provided_headers and :key_mapping options
- * if the incorrect number of headers are provided via :user_provided_headers, exception SmarterCSV::HeaderSizeMismatch is raised
-
-#### NOTES on Duplicate Headers:
- As a corner case, it is possible that a CSV file contains multiple headers with the same name. 
- * If that happens, by default `smarter_csv` will raise a `DuplicateHeaders` error.
- * If you set `duplicate_header_suffix` to a non-nil string, it will use it to append numbers 2..n to the duplicate headers. To further disambiguate the headers, you can further use `key_mapping` to assign meaningful names.
- * If your code will need to process arbitrary CSV files, please set `duplicate_header_suffix`.
- * Another way to deal with duplicate headers it to use `user_assigned_headers` to ignore any headers in the file.
-
-#### NOTES on Key Mapping:
- * keys in the header line of the file can be re-mapped to a chosen set of symbols, so the resulting Hashes can be better used internally in your application (e.g. when directly creating MongoDB entries with them)
- * if you want to completely delete a key, then map it to nil or to '', they will be automatically deleted from any result Hash
- * if you have input files with a large number of columns, and you want to ignore all columns which are not specifically mapped with :key_mapping, then use option :remove_unmapped_keys => true
-
-#### NOTES on the use of Chunking and Blocks:
- * chunking can be VERY USEFUL if used in combination with passing a block to File.read_csv FOR LARGE FILES
- * if you pass a block to File.read_csv, that block will be executed and given an Array of Hashes as the parameter.
- * if the chunk_size is not set, then the array will only contain one Hash.
- * if the chunk_size is > 0 , then the array may contain up to chunk_size Hashes.
- * this can be very useful when passing chunked data to a post-processing step, e.g. through Resque
-
-#### NOTES on improper quotation and unwanted characters in headers:
- * some CSV files use un-escaped quotation characters inside fields. This can cause the import to break. To get around this, use the `:force_simple_split => true` option in combination with `:strip_chars_from_headers => /[\-"]/` . This will also significantly speed up the import.
-   If you would force a different :quote_char instead (setting it to a non-used character), then the import would be up to 5-times slower than using `:force_simple_split`.
-
-## The original post that started SmarterCSV:
-
-  http://www.unixgods.org/Ruby/process_csv_as_hashes.html
-
+[Tyler Tringas](https://github.com/ttringas) wrote an awesome article about [Very large CSV import in Rails on Heroku](https://tylertringas.com/very-large-csv-import-in-rails-on-heroku/)
 
 ## Installation
 
 Add this line to your application's Gemfile:
-```ruby
+
     gem 'smarter_csv'
-```
+
 And then execute:
-```ruby
+
     $ bundle
-```
+
 Or install it yourself as:
-```ruby
+
     $ gem install smarter_csv
-```
-## [ChangeLog](./CHANGELOG.md)
+
+## Upcoming
+
+Planned in the next releases:
+ * programmatic header transformations
+ * CSV command line
+
+## Changes
+
+#### 2.0.0.pre1 (to be released soon!)
+ * completely overhauled how headers and data lines are processed - users can now write their own Procs to transmogrify the raw data.
+ * adding validations, so you can catch errors while or after processing a CSV file.
+
+#### 1.2.8 (2020-02-04)
+ * fixing deprecation warning on Ruby 2.7 (thanks to Diego Salido)
+ * Travis CI
+
+#### 1.2.6 (2018-11-13)
+ * fixing error caused by calling f.close when we do not hand in a file
+
+#### 1.2.5 (2018-09-16)
+ * fixing issue #136 with comments in CSV files
+ * fixing error class hierarchy
+
+#### 1.2.4 (2018-08-06)
+ * using Rails blank? if it's available
+ 
+#### 1.2.3 (2018-01-27)
+* fixed regression / test
+* fixed quote_char interpolation for headers, but not data (thanks to Colin Petruno)
+* bugfix (thanks to Joshua Smith for reporting)
+
+#### 1.2.0 (2018-01-20)
+ * add default validation that a header can only appear once
+ * add option `required_headers`
+
+#### 1.1.5 (2017-11-05)
+ * fix issue with invalid byte sequences in header (issue #103, thanks to Dave Myron)
+ * fix issue with invalid byte sequences in multi-line data (thanks to Ivan Ushakov)
+ * analyze only 500 characters by default when `:row_sep => :auto` is used.
+   added option `row_sep_auto_chars` to change the default if necessary. (thanks to Matthieu Paret)
+
+#### 1.1.4 (2017-01-16)
+ * fixing UTF-8 related bug which was introduced in 1.1.2 (thanks to Tirdad C.)
+
+#### 1.1.3 (2016-12-30)
+ * added warning when options indicate UTF-8 processing, but input filehandle is not opened with r:UTF-8 option
+
+#### 1.1.2 (2016-12-29)
+ * added option `invalid_byte_sequence` (thanks to polycarpou)
+ * added comments on handling of UTF-8 encoding when opening from File vs. OpenURI (thanks to KevinColemanInc)
+
+#### 1.1.1 (2016-11-26)
+ * added option to `skip_lines` (thanks to wal)
+ * added option to `force_utf8` encoding (thanks to jordangraft)
+ * bugfix if no headers in input data (thanks to esBeee)
+ * ensure input file is closed (thanks to waldyr)
+ * improved verbose output (thankd to benmaher)
+ * improved documentation
+
+#### 1.1.0 (2015-07-26)
+ * added feature :value_converters, which allows parsing of dates, money, and other things (thanks to Raphaël Bleuse, Lucas Camargo de Almeida, Alejandro)
+ * added error if :headers_in_file is set to false, and no :user_provided_headers are given (thanks to innhyu)
+ * added support to convert dashes to underscore characters in headers (thanks to César Camacho)
+ * fixing automatic detection of \r\n line-endings (thanks to feens)
+
+#### 1.0.19 (2014-10-29)
+ * added option :keep_original_headers to keep CSV-headers as-is (thanks to Benjamin Thouret)
+
+#### 1.0.18 (2014-10-27)
+ * added support for multi-line fields / csv fields containing CR (thanks to Chris Hilton) (issue #31)
+
+#### 1.0.17 (2014-01-13)
+ * added option to set :row_sep to :auto , for automatic detection of the row-separator (issue #22)
+
+#### 1.0.16 (2014-01-13)
+ * :convert_values_to_numeric option can now be qualified with :except or :only (thanks to Hugo Lepetit)
+ * removed deprecated `process_csv` method
+
+#### 1.0.15 (2013-12-07)
+ * new option:
+   * :remove_unmapped_keys  to completely ignore columns which were not mapped with :key_mapping (thanks to Dave Sanders)
+
+#### 1.0.14 (2013-11-01)
+ * added GPL-2 and MIT license to GEM spec file; if you need another license contact me
+
+#### 1.0.12 (2013-10-15)
+ * added RSpec tests
+
+#### 1.0.11 (2013-09-28)
+ * bugfix : fixed issue #18 - fixing issue with last chunk not being properly returned (thanks to Jordan Running)
+ * added RSpec tests
+
+#### 1.0.10 (2013-06-26)
+ * bugfix : fixed issue #14 - passing options along to CSV.parse (thanks to Marcos Zimmermann)
+
+#### 1.0.9 (2013-06-19)
+ * bugfix : fixed issue #13 with negative integers and floats not being correctly converted (thanks to Graham Wetzler)
+
+#### 1.0.8 (2013-06-01)
+
+ * bugfix : fixed issue with nil values in inputs with quote-char (thanks to Félix Bellanger)
+ * new options:
+    * :force_simple_split : to force simiple splitting on :col_sep character for non-standard CSV-files. e.g. without properly escaped :quote_char
+    * :verbose : print out line number while processing (to track down problems in input files)
+
+#### 1.0.7 (2013-05-20)
+
+ * allowing process to work with objects with a 'readline' method (thanks to taq)
+ * added options:
+    * :file_encoding : defaults to utf8  (thanks to MrTin, Paxa)
+
+#### 1.0.6 (2013-05-19)
+
+ * bugfix : quoted fields are now correctly parsed
+
+#### 1.0.5 (2013-05-08)
+
+ * bugfix : for :headers_in_file option
+
+#### 1.0.4 (2012-08-17)
+
+ * renamed the following options:
+    * :strip_whitepace_from_values => :strip_whitespace   - removes leading/trailing whitespace from headers and values
+
+#### 1.0.3 (2012-08-16)
+
+ * added the following options:
+    * :strip_whitepace_from_values   - removes leading/trailing whitespace from values
+
+#### 1.0.2 (2012-08-02)
+
+ * added more options for dealing with headers:
+    * :user_provided_headers ,user provided Array with header strings or symbols, to precisely define what the headers should be, overriding any in-file headers (default: nil)
+    * :headers_in_file , if the file contains headers as the first line (default: true)
+
+#### 1.0.1 (2012-07-30)
+
+ * added the following options:
+    * :downcase_header
+    * :strings_as_keys
+    * :remove_zero_values
+    * :remove_values_matching
+    * :remove_empty_hashes
+    * :convert_values_to_numeric
+
+ * renamed the following options:
+    * :remove_empty_fields => :remove_empty_values
+
+
+#### 1.0.0 (2012-07-29)
+
+ * renamed `SmarterCSV.process_csv` to `SmarterCSV.process`.
+
+#### 1.0.0.pre1 (2012-07-29)
+
 
 ## Reporting Bugs / Feature Requests
 
 Please [open an Issue on GitHub](https://github.com/tilo/smarter_csv/issues) if you have feedback, new feature requests, or want to report a bug. Thank you!
 
-For reporting issues, please:
-  * include a small sample CSV file
-  * open a pull-request adding a test that demonstrates the issue
-  * mention your version of SmarterCSV, Ruby, Rails
 
-## [A Special Thanks to all Contributors!](CONTRIBUTORS.md) 🎉🎉🎉
+## Special Thanks
 
+Many thanks to people who have filed issues and sent comments.
+And a special thanks to those who contributed pull requests:
+
+ * [Jack 0](https://github.com/xjlin0)
+ * [Alejandro](https://github.com/agaviria)
+ * [Lucas Camargo de Almeida](https://github.com/lcalmeida)
+ * [Raphaël Bleuse](https://github.com/bleuse)
+ * [feens](https://github.com/feens)
+ * [César Camacho](https://github.com/chanko)
+ * [innhyu](https://github.com/innhyu)
+ * [Benjamin Thouret](https://github.com/benichu)
+ * [Chris Hilton](https://github.com/chrismhilton)
+ * [Sean Duckett](http://github.com/sduckett)
+ * [Alex Ong](http://github.com/khaong)
+ * [Martin Nilsson](http://github.com/MrTin)
+ * [Eustáquio Rangel](http://github.com/taq)
+ * [Pavel](http://github.com/paxa)
+ * [Félix Bellanger](https://github.com/Keeguon)
+ * [Graham Wetzler](https://github.com/grahamwetzler)
+ * [Marcos G. Zimmermann](https://github.com/marcosgz)
+ * [Jordan Running](https://github.com/jrunning)
+ * [Dave Sanders](https://github.com/DaveSanders)
+ * [Hugo Lepetit](https://github.com/giglemad)
+ * [esBeee](https://github.com/esBeee)
+ * [Waldyr de Souza](https://github.com/waldyr)
+ * [Ben Maher](https://github.com/benmaher)
+ * [Wal McConnell](https://github.com/wal)
+ * [Jordan Graft](https://github.com/jordangraft)
+ * [Michael](https://github.com/polycarpou)
+ * [Kevin Coleman](https://github.com/KevinColemanInc)
+ * [Tirdad C.](https://github.com/tridadc)
+ * [Dave Myron](https://github.com/contentfree)
+ * [Ivan Ushakov](https://github.com/IvanUshakov)
+ * [Matthieu Paret](https://github.com/mtparet)
+ * [Rohit Amarnath](https://github.com/ramarnat)
+ * [Joshua Smith](https://github.com/enviable)
+ * [Colin Petruno](https://github.com/colinpetruno)
+ * [Chris Wong](https://github.com/lightwave)
+ * [Olle Jonsson](https://github.com/olleolleolle)
+ * [Nicolas Guillemain](https://github.com/Viiruus)
+ * [Sp6](https://github.com/sp6)
+ * [Diego Salido](https://github.com/salidux)
+
+
+## Reporting Issues
+
+1. Please provide the gem version, a sample CSV file and code which reproduces the issue.
+2. Please make a Pull Request with an RSpec3 test which demonstrates the bug if you can.
 
 ## Contributing
 
