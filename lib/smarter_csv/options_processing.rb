@@ -65,22 +65,22 @@ module SmarterCSV
     def process_options(given_options = {})
       puts "User provided options:\n#{pp(given_options)}\n" if given_options[:verbose]
 
-      @options = compute_default_options(given_options)
+      options = compute_default_options(given_options)
 
       # warn about deprecated options / raises error for v2_mode
       handle_deprecations(given_options)
 
       given_options = preprocess_v2_options(given_options) if given_options[:v2_mode]
 
-      @options.merge!(given_options)
+      options.merge!(given_options)
 
       # fix invalid input
-      @options[:invalid_byte_sequence] ||= ''
+      options[:invalid_byte_sequence] ||= ''
 
-      puts "Computed options:\n#{pp(@options)}\n" if given_options[:verbose]
+      puts "Computed options:\n#{pp(options)}\n" if given_options[:verbose]
 
-      validate_options!(@options)
-      @options
+      validate_options!(options)
+      options
     end
 
     # NOTE: this is not called when "parse" methods are tested by themselves

@@ -3,7 +3,7 @@
 module SmarterCSV
   class << self
     # this is processing the headers from the input file
-    def hash_transformations(hash, options)
+    def hash_transformations(instance, hash, options)
       if options[:v2_mode]
         hash_transformations_v2(hash, options)
       else
@@ -22,7 +22,7 @@ module SmarterCSV
 
       hash.each_with_object({}) do |(k, v), new_hash|
         next if k.nil? || k == '' || k == :""
-        next if remove_empty_values && (has_rails ? v.blank? : blank?(v))
+        next if remove_empty_values && (instance.has_rails ? v.blank? : blank?(v))
         next if remove_zero_values && v.is_a?(String) && v =~ /^(0+|0+\.0+)$/ # values are Strings
         next if remove_values_matching && v =~ remove_values_matching
 
